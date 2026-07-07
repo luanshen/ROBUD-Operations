@@ -1,0 +1,55 @@
+{
+  "version": "1.0",
+  "updatedAt": "2026-07-07",
+  "owner": "ROBUD",
+  "brandSites": [
+    {"id": "B01", "name": "Janod", "url": "https://www.janod.com/", "strategy": "html", "enabled": true},
+    {"id": "B02", "name": "Classic N Toys", "url": "https://www.classicntoys.com/product/index.html", "strategy": "html", "enabled": true},
+    {"id": "B03", "name": "Fat Brain Toys", "url": "https://www.fatbraintoys.com/specials/new_products.cfm", "strategy": "html", "enabled": true},
+    {"id": "B04", "name": "Sebra Interior", "url": "https://sebra-interior.com/collections/toys", "strategy": "shopify", "enabled": true},
+    {"id": "B05", "name": "Konges Slojd", "url": "https://kongessloejd.be/collections/playtime", "strategy": "shopify", "enabled": true},
+    {"id": "B06", "name": "Done by Deer", "url": "https://donebydeer.com/en-fr/collections/news", "strategy": "shopify", "enabled": true},
+    {"id": "B07", "name": "Odin Parker", "url": "https://odinparker.com/collections/new-arrivals", "strategy": "shopify", "enabled": true},
+    {"id": "B08", "name": "Petite Amelie", "url": "https://www.petiteamelie.com/toys/all-toys", "strategy": "html", "enabled": true},
+    {"id": "B09", "name": "Pottery Barn Kids", "url": "https://www.potterybarnkids.com/shop/new/new-toys-gifts/", "strategy": "playwright", "enabled": true},
+    {"id": "B10", "name": "Zara Home", "url": "https://www.zarahome.com/us/kids-toys-n1822", "strategy": "playwright", "enabled": true},
+    {"id": "B11", "name": "Jabadabado", "url": "https://jabadabado.se/collections/toys", "strategy": "shopify", "enabled": true},
+    {"id": "B12", "name": "Baby Mori", "url": "https://babymori.com/collections/kidly-new", "strategy": "shopify", "enabled": true},
+    {"id": "B13", "name": "Speedy Monkey", "url": "https://speedymonkey.com/collections/wooden-toys", "strategy": "shopify", "enabled": true},
+    {"id": "B14", "name": "Target Gigglescape", "url": "https://www.target.com/b/gigglescape/-/N-q643leg227q", "strategy": "playwright", "enabled": true},
+    {"id": "B15", "name": "Howa Spielwaren", "url": "https://www.howa-spielwaren.com/en/new/", "strategy": "playwright", "enabled": true},
+    {"id": "B16", "name": "Kmart AU", "url": "https://www.kmart.com.au/category/toys/wooden-toys/", "strategy": "playwright", "enabled": true},
+    {"id": "B17", "name": "Kids Concept", "url": "https://kidsconcept.com/en/news", "strategy": "html", "enabled": true},
+    {"id": "B18", "name": "Guanyi Toys", "url": "https://www.guanyi-toys.com/Category?nodeid=2525", "strategy": "html", "enabled": true},
+    {"id": "B19", "name": "Target B Toys", "url": "https://www.target.com/b/b-toys/-/N-q643leg9gog", "strategy": "playwright", "enabled": true},
+    {"id": "B20", "name": "Bigjigs Toys", "url": "https://www.bigjigstoys.co.uk/collections/new", "strategy": "shopify", "enabled": true},
+    {"id": "B21", "name": "John Lewis", "url": "https://www.johnlewis.com/browse/baby-child/wooden-toys/_/N-fjd", "strategy": "playwright", "enabled": true},
+    {"id": "B22", "name": "Le Toy Van", "url": "https://letoyvan.com/collections/new-in", "strategy": "shopify", "enabled": true},
+    {"id": "B23", "name": "My 1st Years", "url": "https://www.my1styears.com/new-in.html", "strategy": "html", "enabled": true},
+    {"id": "B24", "name": "Tender Leaf Toys", "url": "https://www.tenderleaftoys.com/collections/new-arrivals", "strategy": "shopify", "enabled": true},
+    {"id": "B25", "name": "Little Dutch", "url": "https://www.little-dutch.com/en/new", "strategy": "html", "enabled": true},
+    {"id": "B26", "name": "Vertbaudet", "url": "https://www.vertbaudet.co.uk/toys.htm", "strategy": "playwright", "enabled": true},
+    {"id": "B27", "name": "Learning Resources", "url": "https://www.learningresources.com/shop/featured/new", "strategy": "playwright", "enabled": true},
+    {"id": "B28", "name": "Smallable", "url": "https://www.smallable.com/en/page/wooden-toys", "strategy": "html", "enabled": true},
+    {"id": "B29", "name": "Melissa & Doug", "url": "https://www.melissaanddoug.com/collections/new-arrivals", "strategy": "shopify", "enabled": true}
+  ],
+  "amazonStores": [
+    {"id": "S01", "name": "", "sellerId": "", "category": "Toys", "region": "US", "enabled": false, "lastFetch": null, "status": "pending"},
+    {"id": "S02", "name": "", "sellerId": "", "category": "Baby", "region": "US", "enabled": false, "lastFetch": null, "status": "pending"},
+    {"id": "S03", "name": "", "sellerId": "", "category": "Outdoor", "region": "DE", "enabled": false, "lastFetch": null, "status": "pending"},
+    {"id": "S04", "name": "", "sellerId": "", "category": "Toys", "region": "US", "enabled": false, "lastFetch": null, "status": "pending"},
+    {"id": "S05", "name": "", "sellerId": "", "category": "Toys", "region": "US", "enabled": false, "lastFetch": null, "status": "pending"}
+  ],
+  "sellerspriteFilters": [
+    {"id": "F-A", "name": "新爆款", "categoryId": "165797011", "categoryName": "Toys & Games > Baby Toys", "windowDays": 30, "monthlySales": [100, 5000], "rating": [4.0, 5.0], "reviewCount": [5, 500], "price": [15, 80], "bsrTrend": "rising", "excludeTopBrand": true, "enabled": false, "lastFetch": null, "status": "pending"},
+    {"id": "F-B", "name": "利润蓝海", "categoryId": "165796011", "categoryName": "Baby Products", "windowDays": 60, "monthlySales": [50, 2000], "reviewCount": [0, 100], "price": [20, 100], "fulfillment": "FBA", "enabled": false, "lastFetch": null, "status": "pending"},
+    {"id": "F-C", "name": "季节爆发", "categoryId": "3375251", "categoryName": "Outdoor & Sports", "windowDays": 90, "monthlySales": [200, 10000], "price": [25, 150], "bsrTrend": "seasonal_rising", "enabled": false, "lastFetch": null, "status": "pending"}
+  ],
+  "preferences": {
+    "regions": ["US", "UK", "DE", "FR", "SE", "AU"],
+    "fetchWindowDays": 30,
+    "excludeTopBrands": true,
+    "saveHistory": true,
+    "pushChannel": "silent"
+  }
+}

@@ -1,0 +1,789 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>选品助手 · ROBUD Operations</title>
+<link rel="stylesheet" href="../../portal/assets/shared.css" />
+<style>
+  /* 选品助手专属 */
+  body{ background: var(--canvas-2); }
+  .layout{
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 16px;
+    padding: 16px 24px;
+  }
+  .sidebar{
+    background: var(--canvas);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px;
+    height: fit-content;
+    position: sticky; top: 72px;
+  }
+  .sidebar h4{ margin: 0 0 8px; font-size: var(--fs-sm); color: var(--text-2); }
+  .sidebar .sec{ margin-bottom: 18px; }
+  .filter-row{ display: flex; gap: 6px; align-items: center; }
+  .filter-row .input{ flex: 1; }
+  .chip{ display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px; font-size: 11px; background: var(--accent-soft); color: var(--accent); cursor: pointer; }
+  .chip:hover{ background: rgba(37,99,235,.16); }
+  .chip .x{ cursor: pointer; opacity: .5; }
+  .chip .x:hover{ opacity: 1; }
+  .main{ min-width: 0; }
+  .stats-row{ display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 16px; }
+  .toolbar{ display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+  .toolbar .input-group{ flex: 1; min-width: 200px; }
+  .view-toggle{ display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius-sm); overflow: hidden; }
+  .view-toggle button{ background: var(--canvas); border: none; padding: 6px 10px; cursor: pointer; color: var(--muted); font-size: var(--fs-sm); }
+  .view-toggle button.active{ background: var(--accent); color: white; }
+  .toolbar .view-toggle button:not(:last-child){ border-right: 1px solid var(--line); }
+  .meta-strip{
+    display: flex; gap: 16px; padding: 8px 0; font-size: var(--fs-xs); color: var(--muted);
+    border-top: 1px solid var(--grid); margin-top: 8px; flex-wrap: wrap;
+  }
+  .meta-strip span b{ color: var(--text-2); }
+  .product-card{ position: relative; }
+  .product-card .source-badge{
+    position: absolute; top: 8px; right: 8px;
+    background: rgba(15,23,42,.7); color: white;
+    padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600;
+  }
+  .product-card .source-badge.brand{ background: rgba(124,58,237,.85); }
+  .product-card .source-badge.store{ background: rgba(8,145,178,.85); }
+  .product-card .source-badge.sellersprite{ background: rgba(22,163,74,.85); }
+  .product-card .tags{ display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .product-card .tag{ background: var(--grid); color: var(--text-2); padding: 1px 6px; border-radius: 3px; font-size: 10px; }
+  .drawer-section{ margin-bottom: 18px; }
+  .drawer-section h5{ margin: 0 0 6px; font-size: var(--fs-xs); color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+  .drawer-section p, .drawer-section li{ font-size: var(--fs-sm); color: var(--text-2); line-height: 1.7; }
+  .drawer-section ul{ margin: 0; padding-left: 18px; }
+  .drawer-img{ width: 100%; aspect-ratio: 1/1; border-radius: 8px; object-fit: cover; background: var(--grid); margin-bottom: 12px; }
+  .drawer-price-row{ display: flex; gap: 8px; align-items: baseline; margin: 8px 0 12px; }
+  .drawer-price{ font-size: 28px; font-weight: 700; color: var(--text); }
+  .drawer-old{ color: var(--muted-2); text-decoration: line-through; }
+  .drawer-discount{ background: var(--bad-soft); color: var(--bad); padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+  .drawer-kv{ display: grid; grid-template-columns: 100px 1fr; gap: 6px 12px; font-size: var(--fs-sm); }
+  .drawer-kv .k{ color: var(--muted); }
+  .drawer-kv .v{ color: var(--text-2); }
+  @media (max-width: 900px){
+    .layout{ grid-template-columns: 1fr; }
+    .sidebar{ position: static; }
+    .stats-row{ grid-template-columns: repeat(2,1fr); }
+  }
+
+  /* === 意向清单 (Watchlist) 样式 === */
+  .btn-star{ background: #fef3c7; color: #92400e; border-color: #fde68a; }
+  .btn-star:hover{ background: #fde68a; }
+  .btn-star.active{ background: #fbbf24; color: white; border-color: #f59e0b; }
+  .btn-danger{ background: var(--bad-soft); color: var(--bad); border-color: var(--bad); }
+  .btn-danger:hover{ background: var(--bad); color: white; }
+  tr.in-watchlist{ background: linear-gradient(90deg, rgba(251,191,36,.06), transparent 50%); }
+  tr.in-watchlist td:first-child{ box-shadow: inset 3px 0 0 #fbbf24; }
+  .wl-mini{
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--canvas-2); margin-bottom: 8px;
+  }
+  .wl-mini img{ width: 50px; height: 50px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
+  .wl-mini .info{ flex: 1; min-width: 0; }
+  .wl-mini .info .t{ font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wl-mini .info .m{ font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .wl-mini .actions{ display: flex; gap: 4px; }
+  .empty-state{ text-align: center; padding: 40px 20px; color: var(--muted); }
+  .empty-state .icon{ font-size: 40px; margin-bottom: 12px; opacity: .5; }
+  .wl-count{
+    background: #fbbf24; color: white; font-size: 11px; padding: 1px 7px;
+    border-radius: 10px; margin-left: 4px; font-weight: 600;
+  }
+  .wl-tab-btn{ cursor: pointer; }
+  .product-card.in-watchlist{ box-shadow: 0 0 0 2px #fbbf24; }
+</style>
+</head>
+<body>
+
+<!-- 顶部 Header -->
+<header class="app-header">
+  <div class="brand">
+    <div class="brand-mark">R</div>
+    <span>ROBUD Operations</span>
+  </div>
+  <nav class="nav" data-wb-nav></nav>
+  <div class="meta">
+    <span><span class="dot"></span>数据源 OK</span>
+    <span id="last-updated">最后更新: 加载中…</span>
+    <button class="btn btn-sm btn-star wl-tab-btn" id="btn-open-watchlist" style="margin-left:8px">
+      ⭐ 意向清单 <span class="wl-count" id="wl-count">0</span>
+    </button>
+  </div>
+</header>
+
+<!-- 只读模式横幅 -->
+<div class="read-only-banner">
+  🌐 <b>公开访问版</b> · 团队成员只读浏览
+  <span>· 数据由 <code>data/fetch.py</code> 抓取后嵌入 ·</span>
+  <a href="../../portal/" class="text-xs" style="color:#92400e;text-decoration:underline">← 返回门户</a>
+</div>
+
+<div class="layout">
+  <!-- 左侧筛选 -->
+  <aside class="sidebar">
+    <div class="sec">
+      <h4>🔍 快速搜索</h4>
+      <input class="input" id="q-search" placeholder="商品标题/品牌/ASIN..." />
+    </div>
+
+    <div class="sec">
+      <h4>📅 上架时间</h4>
+      <select class="select" id="f-date">
+        <option value="7">近 7 天</option>
+        <option value="30" selected>近 30 天</option>
+        <option value="90">近 90 天</option>
+        <option value="365">近一年</option>
+        <option value="all">全部</option>
+      </select>
+    </div>
+
+    <div class="sec">
+      <h4>💰 价格区间 (USD)</h4>
+      <div class="filter-row">
+        <input class="input" type="number" id="f-pmin" placeholder="最低" />
+        <span style="color:var(--muted)">—</span>
+        <input class="input" type="number" id="f-pmax" placeholder="最高" />
+      </div>
+    </div>
+
+    <div class="sec">
+      <h4>⭐ 最低评分</h4>
+      <input class="input" type="number" id="f-rating" placeholder="如 4.0" min="0" max="5" step="0.1" />
+    </div>
+
+    <div class="sec">
+      <h4>💬 最低评论数</h4>
+      <input class="input" type="number" id="f-reviews" placeholder="如 50" min="0" />
+    </div>
+
+    <div class="sec">
+      <h4>🏷️ 标签筛选</h4>
+      <input class="input" id="tag-input" placeholder="回车添加标签" />
+      <div id="active-tags" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px"></div>
+    </div>
+
+    <div class="sec">
+      <button class="btn" id="btn-reset" style="width:100%">重置筛选</button>
+    </div>
+
+    <div class="sec" style="border-top:1px solid var(--grid);padding-top:14px;margin-top:6px">
+      <h4>ℹ️ 关于此工具</h4>
+      <p class="text-xs text-muted" style="margin:0;line-height:1.6">
+        数据源:品牌官网 + 亚马逊店铺 + 卖家精灵<br/>
+        当前为示例数据,真实接入见 <code>docs/TODO.md</code> Phase B
+      </p>
+    </div>
+  </aside>
+
+  <!-- 主画布 -->
+  <main class="main">
+    <!-- 统计卡 -->
+    <div class="stats-row" id="stats"></div>
+
+    <!-- 工具栏 -->
+    <div class="card card-pad" style="margin-bottom:16px">
+      <div class="toolbar">
+        <div class="tab-bar" id="tabs" style="flex:1;border-bottom:none"></div>
+        <div class="view-toggle">
+          <button data-view="table" class="active" title="表格视图">☰ 表格</button>
+          <button data-view="card" title="卡片视图">▦ 卡片</button>
+        </div>
+        <button class="btn" id="btn-export">⬇ 导出 CSV</button>
+      </div>
+      <div class="meta-strip" id="meta-strip"></div>
+    </div>
+
+    <!-- 表格 / 卡片 -->
+    <div class="card" id="content-host">
+      <div class="empty-state" id="empty-state" style="display:none">
+        <div class="emoji">📭</div>
+        <h4>没有匹配的商品</h4>
+        <p>试着调整筛选条件,或点击「重置筛选」</p>
+      </div>
+      <div id="content-body"></div>
+    </div>
+  </main>
+</div>
+
+<!-- 脚本 -->
+<script src="../../portal/assets/nav-config.js"></script>
+<script src="../../portal/assets/shared.js"></script>
+<script>
+// ============= 内嵌示例数据 =============
+const INLINE_DATA = {"generatedAt": "2026-07-03", "note": "示例数据 · 真实数据由 data/fetch.py 生成后嵌入 HTML", "stats": {"total": 36, "brand": 12, "store": 12, "sellersprite": 12, "avgPrice": 47.85}, "products": [{"id": "B0B01", "source": "brand", "title": "Wooden Push Walker for Babies 6-12 Months", "brand": "Lovevery", "price": 89.0, "oldPrice": null, "currency": "USD", "image": "https://picsum.photos/seed/w01/200", "url": "https://example.com/lovevery/push-walker", "tags": ["wooden", "walker", "6-12m"], "launchDate": "2026-06-28", "rating": 4.6, "reviews": 42, "bsr": 18420, "category": "Toys › Baby › Walkers", "bullets": ["100% sustainable wood", "Adjustable speed", "ASTM certified"]}, {"id": "B0B02", "source": "brand", "title": "Eco Baby Activity Walker with Music", "brand": "Plan Toys", "price": 75.5, "oldPrice": 99.0, "currency": "USD", "image": "https://picsum.photos/seed/w02/200", "url": "https://example.com/plantoys/eco-walker", "tags": ["wooden", "activity", "music"], "launchDate": "2026-06-25", "rating": 4.4, "reviews": 18, "bsr": 32100, "category": "Toys › Baby › Walkers", "bullets": ["Non-toxic water-based paint", "6 activities", "18m+"]}, {"id": "B0B03", "source": "brand", "title": "Classic Wooden Baby Walker Cart", "brand": "Melissa & Doug", "price": 65.99, "oldPrice": null, "currency": "USD", "image": "https://picsum.photos/seed/w03/200", "url": "https://example.com/md/walker-cart", "tags": ["wooden", "cart", "classic"], "launchDate": "2026-06-22", "rating": 4.7, "reviews": 234, "bsr": 12500, "category": "Toys › Baby › Walkers", "bullets": ["15 wooden blocks", "Sturdy construction", "12m-3y"]}, {"id": "B0B04", "source": "brand", "title": "Wooden Walker with Shape Sorter", "brand": "Hape", "price": 59.99, "oldPrice": 79.99, "currency": "USD", "image": "https://picsum.photos/seed/w04/200", "url": "https://example.com/hape/shape-walker", "tags": ["wooden", "shape", "sort"], "launchDate": "2026-06-20", "rating": 4.5, "reviews": 67, "bsr": 18900, "category": "Toys › Baby › Walkers", "bullets": ["Multi-function", "Water-based paint", "BPA free"]}, {"id": "B0B05", "source": "brand", "title": "Convertible Push Walker 2-in-1", "brand": "Skip Hop", "price": 89.5, "oldPrice": null, "currency": "USD", "image": "https://picsum.photos/seed/w05/200", "url": "https://example.com/skiphop/2in1", "tags": ["wooden", "convertible", "2in1"], "launchDate": "2026-06-18", "rating": 4.3, "reviews": 89, "bsr": 22300, "category": "Toys › Baby › Walkers", "bullets": ["Grows with baby", "Forest friends theme", "9m+"]}, {"id": "B0B06", "source": "brand", "title": "Heirloom Wooden Activity Walker", "brand": "Tadpole", "price": 129.0, "oldPrice": null, "currency": "USD", "image": "https://picsum.photos/seed/w06/200", "url": "https://example.com/tadpole/heirloom", "tags": ["wooden", "heirloom", "premium"], "launchDate": "2026-06-15", "rating": 4.8, "reviews": 12, "bsr": 28100, "category": "Toys › Baby › Walkers", "bullets": ["FSC-certified maple", "Hand-finished", "Lifetime warranty"]}, {"id": "B0B07", "source": "brand", "title": "Wooden Sit-to-Stand Walker", "brand": "VTech", "price": 49.99, "oldPrice": 64.99, "currency": "USD", "image": "https://picsum.photos/seed/w07/200", "url": "https://example.com/vtech/sitstand", "tags": ["wooden", "sit-stand", "interactive"], "launchDate": "2026-06-12", "rating": 4.2, "reviews": 156, "bsr": 15800, "category": "Toys › Baby › Walkers", "bullets": ["Light & music", "20+ songs", "6m-3y"]}, {"id": "B0B08", "source": "brand", "title": "Modern Minimalist Baby Walker", "brand": "Nobodinoz", "price": 99.0, "oldPrice": null, "currency": "USD", "image": "https://picsum.photos/seed/w08/200", "url": "https://example.com/nobodinoz/modern", "tags": ["wooden", "minimalist", "design"], "launchDate": "2026-06-10", "rating": 4.6, "reviews": 28, "bsr": 25400, "category": "Toys › Baby › Walkers", "bullets": ["FSC wood", "Washable cushion", "6m-2y"]}, {"id": "B0B09", "source": "brand", "title": "Wooden Walker with Xylophone", "brand": "Bigjigs", "price": 45.5, "oldPrice": null, "currency": "USD", "image": "https://picsum.photos/seed/w09/200", "url": "https://example.com/bigjigs/xylophone", "tags": ["wooden", "music", "xylophone"], "launchDate": "2026-06-08", "rating": 4.4, "reviews": 73, "bsr": 14200, "category": "Toys › Baby › Walkers", "bullets": ["8-note xylophone", "Pull-along", "18m+"]}, {"id": "B0B10", "source": "brand", "title": "Wooden Duck Walker", "brand": "Brio", "price": 55.0, "oldPrice": null, "currency": "USD", "image": "https://picsum.photos/seed/w10/200", "url": "https://example.com/brio/duck", "tags": ["wooden", "animal", "classic"], "launchDate": "2026-06-05", "rating": 4.7, "reviews": 198, "bsr": 11200, "category": "Toys › Baby › Walkers", "bullets": ["Iconic Swedish design", "Rounded edges", "12m+"]}, {"id": "B0B11", "source": "brand", "title": "Wooden Tree Activity Walker", "brand": "Janod", "price": 69.99, "oldPrice": 89.99, "currency": "USD", "image": "https://picsum.photos/seed/w11/200", "url": "https://example.com/janod/tree", "tags": ["wooden", "activity", "bead"], "launchDate": "2026-06-03", "rating": 4.5, "reviews": 45, "bsr": 19800, "category": "Toys › Baby › Walkers", "bullets": ["Bead maze", "Learning beads", "18m+"]}, {"id": "B0B12", "source": "brand", "title": "Wooden Giraffe Push Toy", "brand": "Labebe", "price": 79.99, "oldPrice": null, "currency": "USD", "image": "https://picsum.photos/seed/w12/200", "url": "https://example.com/labebe/giraffe", "tags": ["wooden", "animal", "premium"], "launchDate": "2026-06-01", "rating": 4.6, "reviews": 34, "bsr": 17600, "category": "Toys › Baby › Walkers", "bullets": ["Soft padded", "Giraffe design", "6m-2y"]}, {"id": "S0A01", "source": "store", "title": "Wooden Baby Push Toy Walker with Storage", "brand": "Bright Starts", "asin": "B0CT001ABC", "price": 42.99, "oldPrice": 59.99, "currency": "USD", "image": "https://picsum.photos/seed/s01/200", "url": "https://amazon.com/dp/B0CT001ABC", "tags": ["wooden", "storage", "push"], "launchDate": "2026-06-29", "rating": 4.3, "reviews": 28, "bsr": 24800, "category": "Toys › Baby › Walkers", "bullets": ["Built-in storage", "Push & pull", "12m+"]}, {"id": "S0A02", "source": "store", "title": "Wooden Activity Walker for Toddlers", "brand": "Fisher-Price", "asin": "B0CT002DEF", "price": 54.99, "oldPrice": null, "currency": "USD", "image": "https://picsum.photos/seed/s02/200", "url": "https://amazon.com/dp/B0CT002DEF", "tags": ["wooden", "toddler", "activity"], "launchDate": "2026-06-26", "rating": 4.5, "reviews": 67, "bsr": 19400, "category": "Toys › Baby › Walkers", "bullets": ["3-in-1", "Smart Stages", "12m-3y"]}, {"id": "S0A03", "source": "store", "title": "Wooden Walk & Ride Unicorn", "brand": "Labebe", "asin": "B0CT003GHI", "price": 119.0, "oldPrice": null, "currency": "USD", "image": "https://picsum.photos/seed/s03/200", "url": "https://amazon.com/dp/B0CT003GHI", "tags": ["wooden", "ride-on", "unicorn"], "launchDate": "2026-06-24", "rating": 4.4, "reviews": 89, "bsr": 21500, "category": "Toys › Baby › Walkers", "bullets": ["Ride & walk", "Magical design", "12m-3y"]}, {"id": "S0A04", "source": "store", "title": "Vintage Wooden Toy Walker", "brand": "Toys of Wood Oxford", "asin": "B0CT004JKL", "price": 38.5, "oldPrice": 49.99, "currency": "USD", "image": "https://picsum.photos/seed/s04/200", "url": "https://amazon.com/dp/B0CT004JKL", "tags": ["wooden", "vintage", "eco"], "launchDate": "2026-06-21", "rating": 4.2, "reviews": 42, "bsr": 16700, "category": "Toys › Baby › Walkers", "bullets": ["Handmade", "Eco materials", "12m+"]}, {"id": "S0A05", "source": "store", "title": "Wooden Bunny Walker", "brand": "Bunnies By The Bay", "asin": "B0CT005MNO", "price": 85.0, "oldPrice": null, "currency": "USD", "image": "https://picsum.photos/seed/s05/200", "url": "https://amazon.com/dp/B0CT005MNO", "tags": ["wooden", "bunny", "premium"], "launchDate": "2026-06-19", "rating": 4.6, "reviews": 56, "bsr": 20300, "category": "Toys › Baby › Walkers", "bullets": ["Plush ears", "Soft grip", "12m-2y"]}, {"id": "S0A06", "source": "store", "title": "Wooden Walker Cart with Blocks", "brand": "Melissa & Doug", "asin": "B0CT006PQR", "price": 69.99, "oldPrice": null, "currency": "USD", "image": "https://picsum.photos/seed/s06/200", "url": "https://amazon.com/dp/B0CT006PQR", "tags": ["wooden", "blocks", "cart"], "launchDate": "2026-06-16", "rating": 4.8, "reviews": 412, "bsr": 9800, "category": "Toys › Baby › Walkers", "bullets": ["100 blocks", "Sturdy build", "18m+"]}, {"id": "S0A07", "source": "store", "title": "Wooden Walk-Behind Puppy", "brand": "Pound Puppies", "asin": "B0CT007STU", "price": 62.5, "oldPrice": 75.0, "currency": "USD", "image": "https://picsum.photos/seed/s07/200", "url": "https://amazon.com/dp/B0CT007STU", "tags": ["wooden", "puppy", "cart"], "launchDate": "2026-06-13", "rating": 4.3, "reviews": 73, "bsr": 17200, "category": "Toys › Baby › Walkers", "bullets": ["Tail wags", "Pull string", "12m+"]}, {"id": "S0A08", "source": "store", "title": "Wooden Crocodile Push Toy", "brand": "Scratch Europe", "asin": "B0CT008VWX", "price": 48.0, "oldPrice": null, "currency": "USD", "image": "https://picsum.photos/seed/s08/200", "url": "https://amazon.com/dp/B0CT008VWX", "tags": ["wooden", "crocodile", "push"], "launchDate": "2026-06-11", "rating": 4.5, "reviews": 91, "bsr": 14900, "category": "Toys › Baby › Walkers", "bullets": ["Wobbly walk", "Forest theme", "12m+"]}, {"id": "S0A09", "source": "store", "title": "Wooden Caterpillar Walker", "brand": "Scratch Europe", "asin": "B0CT009YZA", "price": 52.0, "oldPrice": null, "currency": "USD", "image": "https://picsum.photos/seed/s09/200", "url": "https://amazon.com/dp/B0CT009YZA", "tags": ["wooden", "caterpillar", "pull"], "launchDate": "2026-06-09", "rating": 4.4, "reviews": 38, "bsr": 18300, "category": "Toys › Baby › Walkers", "bullets": ["Segements move", "Bright colors", "12m+"]}, {"id": "S0A10", "source": "store", "title": "Wooden Lawn Mower Walker", "brand": "Hape", "asin": "B0CT010BCD", "price": 44.99, "oldPrice": 54.99, "currency": "USD", "image": "https://picsum.photos/seed/s10/200", "url": "https://amazon.com/dp/B0CT010BCD", "tags": ["wooden", "lawn", "pretend"], "launchDate": "2026-06-06", "rating": 4.6, "reviews": 124, "bsr": 13100, "category": "Toys › Baby › Walkers", "bullets": ["Popping beads", "Pretend play", "18m+"]}, {"id": "S0A11", "source": "store", "title": "Wooden Owl Walker", "brand": "Scratch Europe", "asin": "B0CT011EFG", "price": 56.0, "oldPrice": null, "currency": "USD", "image": "https://picsum.photos/seed/s11/200", "url": "https://amazon.com/dp/B0CT011EFG", "tags": ["wooden", "owl", "cart"], "launchDate": "2026-06-04", "rating": 4.5, "reviews": 62, "bsr": 16400, "category": "Toys › Baby › Walkers", "bullets": ["Wing spins", "Forest theme", "12m+"]}, {"id": "S0A12", "source": "store", "title": "Wooden Walker with Activity Panel", "brand": "VTech", "asin": "B0CT012HIJ", "price": 79.99, "oldPrice": 99.99, "currency": "USD", "image": "https://picsum.photos/seed/s12/200", "url": "https://amazon.com/dp/B0CT012HIJ", "tags": ["wooden", "activity", "panel"], "launchDate": "2026-06-02", "rating": 4.3, "reviews": 47, "bsr": 19200, "category": "Toys › Baby › Walkers", "bullets": ["Light & sound", "Learning games", "9m+"]}, {"id": "K0P01", "source": "sellersprite", "title": "Wooden Walker for Baby 1-2 Years", "brand": "Generic-Store", "asin": "B0KW001AAA", "price": 35.99, "oldPrice": null, "currency": "USD", "image": "https://picsum.photos/seed/k01/200", "url": "https://amazon.com/dp/B0KW001AAA", "tags": ["wooden", "walker", "new"], "launchDate": "2026-06-30", "rating": 4.1, "reviews": 12, "bsr": 28900, "category": "Toys › Baby › Walkers", "bullets": ["Natural wood", "FSC certified", "12m-2y"]}, {"id": "K0P02", "source": "sellersprite", "title": "Wooden Baby Walker with Wheels", "brand": "Generic-Store", "asin": "B0KW002BBB", "price": 29.99, "oldPrice": null, "currency": "USD", "image": "https://picsum.photos/seed/k02/200", "url": "https://amazon.com/dp/B0KW002BBB", "tags": ["wooden", "wheels", "new"], "launchDate": "2026-06-27", "rating": 4.0, "reviews": 8, "bsr": 35400, "category": "Toys › Baby › Walkers", "bullets": ["4 wheels", "Stable", "12m+"]}, {"id": "K0P03", "source": "sellersprite", "title": "Wooden Montessori Walker", "brand": "Generic-Store", "asin": "B0KW003CCC", "price": 68.0, "oldPrice": null, "currency": "USD", "image": "https://picsum.photos/seed/k03/200", "url": "https://amazon.com/dp/B0KW003CCC", "tags": ["wooden", "montessori", "new"], "launchDate": "2026-06-25", "rating": 4.7, "reviews": 22, "bsr": 22800, "category": "Toys › Baby › Walkers", "bullets": ["Montessori method", "Adjustable", "6m-2y"]}, {"id": "K0P04", "source": "sellersprite", "title": "Wooden Push Toy Car", "brand": "Generic-Store", "asin": "B0KW004DDD", "price": 42.0, "oldPrice": null, "currency": "USD", "image": "https://picsum.photos/seed/k04/200", "url": "https://amazon.com/dp/B0KW004DDD", "tags": ["wooden", "car", "new"], "launchDate": "2026-06-23", "rating": 4.4, "reviews": 18, "bsr": 19500, "category": "Toys › Baby › Walkers", "bullets": ["Cute car", "Storage seat", "12m+"]}, {"id": "K0P05", "source": "sellersprite", "title": "Wooden Baby Activity Cube & Walker", "brand": "Generic-Store", "asin": "B0KW005EEE", "price": 55.5, "oldPrice": 75.0, "currency": "USD", "image": "https://picsum.photos/seed/k05/200", "url": "https://amazon.com/dp/B0KW005EEE", "tags": ["wooden", "cube", "new"], "launchDate": "2026-06-20", "rating": 4.5, "reviews": 31, "bsr": 17200, "category": "Toys › Baby › Walkers", "bullets": ["5 activities", "5 sides", "12m+"]}, {"id": "K0P06", "source": "sellersprite", "title": "Wooden Sit-to-Stand Learning Walker", "brand": "Generic-Store", "asin": "B0KW006FFF", "price": 48.99, "oldPrice": null, "currency": "USD", "image": "https://picsum.photos/seed/k06/200", "url": "https://amazon.com/dp/B0KW006FFF", "tags": ["wooden", "learning", "new"], "launchDate": "2026-06-18", "rating": 4.3, "reviews": 14, "bsr": 21300, "category": "Toys › Baby › Walkers", "bullets": ["ABC & 123", "Music", "6m-3y"]}, {"id": "K0P07", "source": "sellersprite", "title": "Wooden Adjustable Baby Walker", "brand": "Generic-Store", "asin": "B0KW007GGG", "price": 72.0, "oldPrice": null, "currency": "USD", "image": "https://picsum.photos/seed/k07/200", "url": "https://amazon.com/dp/B0KW007GGG", "tags": ["wooden", "adjustable", "new"], "launchDate": "2026-06-15", "rating": 4.6, "reviews": 26, "bsr": 18900, "category": "Toys › Baby › Walkers", "bullets": ["3 heights", "Grows with baby", "9m-3y"]}, {"id": "K0P08", "source": "sellersprite", "title": "Wooden Wheelbarrow Walker", "brand": "Generic-Store", "asin": "B0KW008HHH", "price": 39.99, "oldPrice": null, "currency": "USD", "image": "https://picsum.photos/seed/k08/200", "url": "https://amazon.com/dp/B0KW008HHH", "tags": ["wooden", "wheelbarrow", "new"], "launchDate": "2026-06-12", "rating": 4.2, "reviews": 9, "bsr": 24100, "category": "Toys › Baby › Walkers", "bullets": ["Tipping bucket", "Outdoor", "18m+"]}, {"id": "K0P09", "source": "sellersprite", "title": "Wooden Baby Walker Toy with Balls", "brand": "Generic-Store", "asin": "B0KW009III", "price": 45.0, "oldPrice": null, "currency": "USD", "image": "https://picsum.photos/seed/k09/200", "url": "https://amazon.com/dp/B0KW009III", "tags": ["wooden", "balls", "new"], "launchDate": "2026-06-09", "rating": 4.4, "reviews": 19, "bsr": 20100, "category": "Toys › Baby › Walkers", "bullets": ["Popping balls", "Colorful", "12m+"]}, {"id": "K0P10", "source": "sellersprite", "title": "Wooden Push & Pull Elephant", "brand": "Generic-Store", "asin": "B0KW010JJJ", "price": 52.5, "oldPrice": null, "currency": "USD", "image": "https://picsum.photos/seed/k10/200", "url": "https://amazon.com/dp/B0KW010JJJ", "tags": ["wooden", "elephant", "new"], "launchDate": "2026-06-07", "rating": 4.5, "reviews": 24, "bsr": 17500, "category": "Toys › Baby › Walkers", "bullets": ["Wobbly feet", "Cart", "12m+"]}, {"id": "K0P11", "source": "sellersprite", "title": "Wooden Mini Walker for 6m+", "brand": "Generic-Store", "asin": "B0KW011KKK", "price": 32.99, "oldPrice": 42.0, "currency": "USD", "image": "https://picsum.photos/seed/k11/200", "url": "https://amazon.com/dp/B0KW011KKK", "tags": ["wooden", "mini", "new"], "launchDate": "2026-06-05", "rating": 4.0, "reviews": 6, "bsr": 31200, "category": "Toys › Baby › Walkers", "bullets": ["Lightweight", "6m+", "Travel"]}, {"id": "K0P12", "source": "sellersprite", "title": "Wooden Premium Baby Walker", "brand": "Generic-Store", "asin": "B0KW012LLL", "price": 99.0, "oldPrice": null, "currency": "USD", "image": "https://picsum.photos/seed/k12/200", "url": "https://amazon.com/dp/B0KW012LLL", "tags": ["wooden", "premium", "new"], "launchDate": "2026-06-02", "rating": 4.7, "reviews": 15, "bsr": 19800, "category": "Toys › Baby › Walkers", "bullets": ["Premium wood", "Multi-game", "6m-3y"]}]};
+
+// ============= State =============
+const STATE = {
+  products: [],
+  activeTab: 'all',       // all | brand | store | sellersprite
+  view: 'table',          // table | card
+  search: '',
+  date: 30,
+  pmin: null, pmax: null,
+  rating: null, reviews: null,
+  tags: [],
+  sortKey: 'launchDate',
+  sortDir: 'desc'
+};
+
+const SOURCE_LABELS = {
+  brand: '品牌官网',
+  store: '亚马逊店铺',
+  sellersprite: '卖家精灵'
+};
+const SOURCE_BADGE = {
+  brand: 'B', store: 'A', sellersprite: 'S'
+};
+
+// ============= 数据加载 (fetch products.json) =============
+async function loadData(){
+  try {
+    const resp = await fetch('data/products.json', { cache: 'no-store' });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    STATE.products = (data.products || []).map(normalizeProduct);
+    updateMeta(data.updatedAt, data.total, false);
+  } catch (e) {
+    // file:// 协议或 fetch 失败时，降级到内嵌示例数据
+    STATE.products = (INLINE_DATA.products || []).map(normalizeProduct);
+    updateMeta(INLINE_DATA.generatedAt, (INLINE_DATA.stats && INLINE_DATA.stats.total) || STATE.products.length, true);
+    console.warn('[loadData] 使用内嵌示例数据:', e.message);
+  }
+  renderAll();
+}
+
+function normalizeProduct(p){
+  return {
+    id: p.id || ('B' + Math.random().toString(36).slice(2, 8)),
+    source: p.source || 'brand',
+    title: p.title || p.name || '未命名',
+    brand: p.brand || '',
+    price: Number(p.price) || 0,
+    oldPrice: (p.oldPrice === undefined ? null : p.oldPrice),
+    currency: p.currency || 'USD',
+    image: p.image || '',
+    url: p.url || '',
+    tags: p.tags || [],
+    launchDate: p.launchDate || p.created || new Date().toISOString().slice(0, 10),
+    rating: (p.rating === undefined ? null : p.rating),
+    reviews: (p.reviews === undefined ? null : p.reviews),
+    bsr: (p.bsr === undefined ? null : p.bsr),
+    category: p.category || '',
+    bullets: p.bullets || []
+  };
+}
+
+function updateMeta(updatedAt, total, isFallback){
+  const el = document.getElementById('last-updated');
+  if (el){
+    let txt = '最后更新: ' + (updatedAt ? new Date(updatedAt).toLocaleDateString('zh-CN') : '—');
+    if (isFallback) txt += ' (示例)';
+    el.textContent = txt;
+  }
+  const banner = document.querySelector('.read-only-banner span');
+  if (banner) banner.innerHTML = isFallback
+    ? '· 示例数据（部署后自动抓取）·'
+    : `· 自动抓取 ${total || 0} 个商品 ·`;
+}
+
+// ============= 初始化 =============
+document.addEventListener('DOMContentLoaded', () => {
+  WorkBuddy.injectHeaderNav('product-helper');
+  bindEvents();
+  loadData();
+});
+
+function bindEvents(){
+  // 搜索
+  document.getElementById('q-search').addEventListener('input', e => { STATE.search = e.target.value; renderAll(); });
+  // 时间
+  document.getElementById('f-date').addEventListener('change', e => { STATE.date = e.target.value; renderAll(); });
+  // 价格
+  document.getElementById('f-pmin').addEventListener('input', e => { STATE.pmin = +e.target.value || null; renderAll(); });
+  document.getElementById('f-pmax').addEventListener('input', e => { STATE.pmax = +e.target.value || null; renderAll(); });
+  // 评分/评论
+  document.getElementById('f-rating').addEventListener('input', e => { STATE.rating = +e.target.value || null; renderAll(); });
+  document.getElementById('f-reviews').addEventListener('input', e => { STATE.reviews = +e.target.value || null; renderAll(); });
+  // 标签
+  const tagInput = document.getElementById('tag-input');
+  tagInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && tagInput.value.trim()) {
+      const t = tagInput.value.trim().toLowerCase();
+      if (!STATE.tags.includes(t)) STATE.tags.push(t);
+      tagInput.value = '';
+      renderAll();
+    }
+  });
+  // 重置
+  document.getElementById('btn-reset').addEventListener('click', () => {
+    STATE.search = ''; STATE.date = 30; STATE.pmin = null; STATE.pmax = null;
+    STATE.rating = null; STATE.reviews = null; STATE.tags = []; STATE.activeTab = 'all';
+    document.getElementById('q-search').value = '';
+    document.getElementById('f-date').value = '30';
+    document.getElementById('f-pmin').value = '';
+    document.getElementById('f-pmax').value = '';
+    document.getElementById('f-rating').value = '';
+    document.getElementById('f-reviews').value = '';
+    WorkBuddy.toast('已重置筛选', 'success');
+    renderAll();
+  });
+  // 视图切换
+  document.querySelectorAll('.view-toggle button').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.view-toggle button').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      STATE.view = b.dataset.view;
+      renderAll();
+    });
+  });
+  // 导出
+  document.getElementById('btn-export').addEventListener('click', () => {
+    const list = applyFilters();
+    if (!list.length) { WorkBuddy.toast('没有可导出的数据', 'warn'); return; }
+    const headers = ['来源','品牌','标题','ASIN','价格','原价','上架时间','评分','评论数','BSR','URL','标签'];
+    const rows = list.map(p => [
+      SOURCE_LABELS[p.source], p.brand || '', p.title, p.asin || '',
+      p.price, p.oldPrice || '', p.launchDate, p.rating, p.reviews, p.bsr, p.url, (p.tags||[]).join('|')
+    ]);
+    WorkBuddy.exportCSV(headers, rows, `product-helper-${new Date().toISOString().slice(0,10)}.csv`);
+    WorkBuddy.toast(`已导出 ${list.length} 条`, 'success');
+  });
+}
+
+// ============= 过滤 + 排序 =============
+function applyFilters(){
+  const now = Date.now();
+  const dateLimit = STATE.date === 'all' ? 0 : parseInt(STATE.date) * 86400000;
+  return STATE.products.filter(p => {
+    if (STATE.activeTab !== 'all' && p.source !== STATE.activeTab) return false;
+    if (dateLimit && now - new Date(p.launchDate).getTime() > dateLimit) return false;
+    if (STATE.pmin != null && p.price < STATE.pmin) return false;
+    if (STATE.pmax != null && p.price > STATE.pmax) return false;
+    if (STATE.rating != null && p.rating < STATE.rating) return false;
+    if (STATE.reviews != null && p.reviews < STATE.reviews) return false;
+    if (STATE.tags.length){
+      const has = STATE.tags.every(t => (p.tags||[]).some(pt => pt.toLowerCase().includes(t)) || (p.title||'').toLowerCase().includes(t) || (p.brand||'').toLowerCase().includes(t));
+      if (!has) return false;
+    }
+    if (STATE.search){
+      const s = STATE.search.toLowerCase();
+      const hay = [p.title, p.brand, p.asin, (p.tags||[]).join(' '), p.category].join(' ').toLowerCase();
+      if (!hay.includes(s)) return false;
+    }
+    return true;
+  }).sort((a, b) => {
+    const av = a[STATE.sortKey], bv = b[STATE.sortKey];
+    const d = STATE.sortDir === 'asc' ? 1 : -1;
+    if (typeof av === 'string') return av.localeCompare(bv) * d;
+    return ((av || 0) - (bv || 0)) * d;
+  });
+}
+
+// ============= 渲染 =============
+function renderAll(){
+  renderStats();
+  renderTabs();
+  renderTags();
+  const list = applyFilters();
+  renderMetaStrip(list);
+  if (!list.length){
+    document.getElementById('content-body').innerHTML = '';
+    document.getElementById('empty-state').style.display = 'block';
+    return;
+  }
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('content-body').innerHTML = STATE.view === 'table' ? renderTable(list) : renderCardGrid(list);
+  bindTableSort();
+  bindDrawerOpen();
+}
+
+function renderStats(){
+  const all = STATE.products;
+  const brand = all.filter(p => p.source === 'brand').length;
+  const store = all.filter(p => p.source === 'store').length;
+  const ss = all.filter(p => p.source === 'sellersprite').length;
+  const avg = all.length ? (all.reduce((s,p)=>s+p.price,0) / all.length) : 0;
+  document.getElementById('stats').innerHTML = `
+    <div class="stat-card"><div class="label">商品总数</div><div class="value">${all.length}</div><div class="delta">三源合并</div><div class="icon">📦</div></div>
+    <div class="stat-card brand"><div class="label">品牌官网</div><div class="value">${brand}</div><div class="delta">官方新品</div><div class="icon">🏷</div></div>
+    <div class="stat-card store"><div class="label">亚马逊店铺</div><div class="value">${store}</div><div class="delta">店铺新品</div><div class="icon">🛒</div></div>
+    <div class="stat-card ss"><div class="label">卖家精灵</div><div class="value">${ss}</div><div class="delta">行业新品</div><div class="icon">📈</div></div>
+    <div class="stat-card avg"><div class="label">平均价格</div><div class="value">${WorkBuddy.fmtUSD(avg)}</div><div class="delta">USD</div><div class="icon">💰</div></div>
+  `;
+}
+
+function renderTabs(){
+  const counts = {
+    all: STATE.products.length,
+    brand: STATE.products.filter(p => p.source === 'brand').length,
+    store: STATE.products.filter(p => p.source === 'store').length,
+    sellersprite: STATE.products.filter(p => p.source === 'sellersprite').length
+  };
+  const items = [
+    ['all', '全部', counts.all],
+    ['brand', '品牌官网', counts.brand],
+    ['store', '亚马逊店铺', counts.store],
+    ['sellersprite', '卖家精灵', counts.sellersprite]
+  ];
+  document.getElementById('tabs').innerHTML = items.map(([k,label,n]) =>
+    `<div class="tab ${STATE.activeTab===k?'active':''}" data-tab="${k}">${label}<span class="count">${n}</span></div>`
+  ).join('');
+  document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => { STATE.activeTab = t.dataset.tab; renderAll(); }));
+}
+
+function renderTags(){
+  document.getElementById('active-tags').innerHTML = STATE.tags.map(t =>
+    `<span class="chip">${t}<span class="x" data-tag="${t}">×</span></span>`
+  ).join('');
+  document.querySelectorAll('.chip .x').forEach(x => x.addEventListener('click', () => {
+    STATE.tags = STATE.tags.filter(t => t !== x.dataset.tag);
+    renderAll();
+  }));
+}
+
+function renderMetaStrip(list){
+  const sources = [...new Set(list.map(p => SOURCE_LABELS[p.source]))];
+  const dateRange = list.length ? list.map(p => p.launchDate).sort()[0] + ' ~ ' + list.map(p => p.launchDate).sort().slice(-1)[0] : '-';
+  const avgPrice = list.length ? list.reduce((s,p)=>s+p.price,0)/list.length : 0;
+  document.getElementById('meta-strip').innerHTML = `
+    <span>命中 <b>${list.length}</b> 条</span>
+    <span>来源: <b>${sources.join(' / ') || '-'}</b></span>
+    <span>时间: <b>${dateRange}</b></span>
+    <span>均价: <b>${WorkBuddy.fmtUSD(avgPrice)}</b></span>
+    <span>排序: <b>${STATE.sortKey} ${STATE.sortDir==='asc'?'↑':'↓'}</b></span>
+  `;
+}
+
+function renderTable(list){
+  const cols = [
+    { key: '', label: '', sortable: false, w: 50 },
+    { key: 'title', label: '商品', sortable: true },
+    { key: 'source', label: '来源', sortable: true, w: 100 },
+    { key: 'price', label: '价格', sortable: true, w: 110 },
+    { key: 'launchDate', label: '上架时间', sortable: true, w: 110 },
+    { key: 'rating', label: '评分', sortable: true, w: 80 },
+    { key: 'reviews', label: '评论', sortable: true, w: 70 },
+    { key: 'bsr', label: 'BSR', sortable: true, w: 70 },
+    { key: '', label: '', sortable: false, w: 140 }
+  ];
+  const ths = cols.map(c => {
+    const sorted = STATE.sortKey === c.key;
+    const ind = sorted ? (STATE.sortDir==='asc'?'▲':'▼') : (c.sortable?'⇅':'');
+    return `<th class="${sorted?'sorted':''}" data-key="${c.key}" style="${c.w?'width:'+c.w+'px':''}">${c.label}<span class="sort-ind">${ind}</span></th>`;
+  }).join('');
+  const rows = list.map(p => {
+    const discount = p.oldPrice ? Math.round((1 - p.price/p.oldPrice)*100) : null;
+    const inWl = isInWatchlist(p.id);
+    return `
+      <tr data-id="${p.id}" class="${inWl?'in-watchlist':''}">
+        <td class="img-cell"><img src="${p.image}" alt="" loading="lazy" onerror="this.style.background='var(--grid)';this.removeAttribute('src')"></td>
+        <td>
+          <div style="font-weight:500;color:var(--text)">${p.title}</div>
+          <div class="text-xs text-muted">${p.brand}${p.asin?' · '+p.asin:''}</div>
+        </td>
+        <td><span class="badge ${p.source==='brand'?'info':p.source==='store'?'warn':'good'}">${SOURCE_LABELS[p.source]}</span></td>
+        <td class="price">${WorkBuddy.fmtUSD(p.price)}${p.oldPrice?`<span class="price-old">${WorkBuddy.fmtUSD(p.oldPrice)}</span>`:''}</td>
+        <td class="nowrap">${WorkBuddy.fmtDate(p.launchDate)}<br><span class="text-xs text-muted">${WorkBuddy.relTime(p.launchDate)}</span></td>
+        <td class="rating">${p.rating!=null?'★ '+p.rating.toFixed(1):'-'}</td>
+        <td class="num">${WorkBuddy.fmtNum(p.reviews)}</td>
+        <td class="num text-muted">#${WorkBuddy.fmtNum(p.bsr)}</td>
+        <td style="white-space:nowrap">
+          <button class="btn btn-sm btn-star ${inWl?'active':''}" data-watch="${p.id}" title="${inWl?'从意向清单移除':'加入意向清单'}">${inWl?'★ 已加入':'☆ 加入'}</button>
+          <button class="btn btn-sm" data-detail="${p.id}">详情</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+  return `<div style="overflow-x:auto"><table class="data-table"><thead><tr>${ths}</tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+function renderCardGrid(list){
+  return `<div class="card-grid" style="padding:16px">
+    ${list.map(p => {
+      const inWl = isInWatchlist(p.id);
+      return `
+      <div class="product-card ${inWl?'in-watchlist':''}" data-id="${p.id}">
+        <img class="thumb" src="${p.image}" loading="lazy" onerror="this.style.background='var(--grid)';this.removeAttribute('src')">
+        <span class="source-badge ${p.source}">${SOURCE_LABELS[p.source]}</span>
+        ${inWl?'<span class="source-badge brand" style="left:auto;right:8px;background:#fbbf24">★ 已加入</span>':''}
+        <div class="body">
+          <div class="title">${p.title}</div>
+          <div class="meta">
+            <span class="price">${WorkBuddy.fmtUSD(p.price)}</span>
+            <span class="rating">★ ${p.rating.toFixed(1)}</span>
+          </div>
+          <div class="text-xs text-muted">${p.brand} · ${WorkBuddy.relTime(p.launchDate)}</div>
+          <div class="tags">${(p.tags||[]).slice(0,3).map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+        </div>
+      </div>
+    `;}).join('')}
+  </div>`;
+}
+
+function bindTableSort(){
+  document.querySelectorAll('.data-table th[data-key]').forEach(th => {
+    const k = th.dataset.key;
+    if (!k) return;
+    th.addEventListener('click', () => {
+      if (STATE.sortKey === k) STATE.sortDir = STATE.sortDir === 'asc' ? 'desc' : 'asc';
+      else { STATE.sortKey = k; STATE.sortDir = 'desc'; }
+      renderAll();
+    });
+  });
+}
+
+function bindDrawerOpen(){
+  document.querySelectorAll('[data-id]').forEach(el => {
+    el.addEventListener('click', e => {
+      // 表格行 / 卡片点击 → 打开抽屉
+      if (e.target.closest('button') || e.target.closest('a')) return;
+      const id = el.dataset.id;
+      const p = STATE.products.find(x => x.id === id);
+      if (p) openDetail(p);
+    });
+  });
+  document.querySelectorAll('[data-detail]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const p = STATE.products.find(x => x.id === btn.dataset.detail);
+      if (p) openDetail(p);
+    });
+  });
+}
+
+function openDetail(p){
+  const discount = p.oldPrice ? Math.round((1 - p.price/p.oldPrice)*100) : null;
+  WorkBuddy.openDrawer({
+    title: p.title,
+    body: `
+      <img class="drawer-img" src="${p.image}" onerror="this.style.background='var(--grid)';this.removeAttribute('src')">
+      <div class="drawer-price-row">
+        <span class="drawer-price">${WorkBuddy.fmtUSD(p.price)}</span>
+        ${p.oldPrice?`<span class="drawer-old">${WorkBuddy.fmtUSD(p.oldPrice)}</span><span class="drawer-discount">-${discount}%</span>`:''}
+      </div>
+      <div class="drawer-section">
+        <div class="drawer-kv">
+          <div class="k">来源</div><div class="v"><span class="badge ${p.source==='brand'?'info':p.source==='store'?'warn':'good'}">${SOURCE_LABELS[p.source]}</span></div>
+          <div class="k">品牌</div><div class="v">${p.brand || '-'}</div>
+          ${p.asin?`<div class="k">ASIN</div><div class="v"><code>${p.asin}</code></div>`:''}
+          <div class="k">类目</div><div class="v">${p.category || '-'}</div>
+          <div class="k">上架时间</div><div class="v">${WorkBuddy.fmtDate(p.launchDate)} (${WorkBuddy.relTime(p.launchDate)})</div>
+          <div class="k">评分</div><div class="v">★ ${p.rating!=null?p.rating.toFixed(1):'-'} (${WorkBuddy.fmtNum(p.reviews)} 条评论)</div>
+          <div class="k">BSR 排名</div><div class="v">#${WorkBuddy.fmtNum(p.bsr)}</div>
+        </div>
+      </div>
+      ${p.bullets && p.bullets.length?`
+      <div class="drawer-section">
+        <h5>📌 卖点</h5>
+        <ul>${p.bullets.map(b=>`<li>${b}</li>`).join('')}</ul>
+      </div>`:''}
+      ${p.tags && p.tags.length?`
+      <div class="drawer-section">
+        <h5>🏷️ 标签</h5>
+        <div style="display:flex;flex-wrap:wrap;gap:4px">${p.tags.map(t=>`<span class="badge">${t}</span>`).join('')}</div>
+      </div>`:''}
+    `,
+    actions: [
+      { label: isInWatchlist(p.id) ? '★ 从意向清单移除' : '☆ 加入意向清单', onClick: () => {
+        toggleWatchlist(p);
+        WorkBuddy.closeDrawer();
+        renderAll();
+        WorkBuddy.toast(
+          isInWatchlist(p.id) ? '✅ 已加入意向清单' : '↩️ 已从意向清单移除',
+          isInWatchlist(p.id) ? 'success' : 'info'
+        );
+      } },
+      { label: p.asin?'复制 ASIN':'复制链接', onClick: () => {
+        const txt = p.asin || p.url;
+        navigator.clipboard?.writeText(txt);
+        WorkBuddy.toast('已复制: ' + txt, 'success');
+      } },
+      { label: '跳转商品', primary: true, onClick: () => {
+        window.open(p.url, '_blank');
+      } }
+    ]
+  });
+}
+
+/* ===========================================================
+   意向清单 (Watchlist) · localStorage 持久化
+   =========================================================== */
+const WL_KEY = 'robud_watchlist_v1';
+let WATCHLIST = loadWatchlist();
+
+function loadWatchlist(){
+  try {
+    const raw = localStorage.getItem(WL_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch(e) {
+    console.warn('loadWatchlist failed', e);
+    return [];
+  }
+}
+function saveWatchlist(){
+  try { localStorage.setItem(WL_KEY, JSON.stringify(WATCHLIST)); }
+  catch(e) { console.warn('saveWatchlist failed', e); }
+}
+function isInWatchlist(id){
+  return WATCHLIST.some(x => x.id === id);
+}
+function addToWatchlist(p){
+  if(isInWatchlist(p.id)) return;
+  WATCHLIST.unshift({
+    id: p.id,
+    asin: p.asin || null,
+    title: p.title,
+    brand: p.brand || null,
+    source: p.source,
+    price: p.price,
+    oldPrice: p.oldPrice || null,
+    image: p.image,
+    url: p.url,
+    rating: p.rating,
+    reviews: p.reviews,
+    bsr: p.bsr,
+    launchDate: p.launchDate,
+    addedAt: new Date().toISOString(),
+    note: ''
+  });
+  saveWatchlist();
+  updateWatchlistBadge();
+}
+function removeFromWatchlist(id){
+  WATCHLIST = WATCHLIST.filter(x => x.id !== id);
+  saveWatchlist();
+  updateWatchlistBadge();
+}
+function toggleWatchlist(p){
+  if(isInWatchlist(p.id)) removeFromWatchlist(p.id);
+  else addToWatchlist(p);
+}
+function updateWatchlistBadge(){
+  const el = document.getElementById('wl-count');
+  if(el) el.textContent = WATCHLIST.length;
+}
+function openWatchlistDrawer(){
+  if(WATCHLIST.length === 0){
+    WorkBuddy.toast('意向清单为空 · 浏览商品时点击"☆ 加入"即可', 'info');
+    return;
+  }
+  const items = WATCHLIST.map(w => `
+    <div class="wl-mini" data-wl-id="${w.id}">
+      <img src="${w.image}" onerror="this.style.background='var(--grid)';this.removeAttribute('src')" alt="">
+      <div class="info">
+        <div class="t" title="${w.title}">${w.title}</div>
+        <div class="m">
+          <span class="badge ${w.source==='brand'?'info':w.source==='store'?'warn':'good'}">${SOURCE_LABELS[w.source]}</span>
+          · ${w.brand || '-'}
+          ${w.asin?` · <code>${w.asin}</code>`:''}
+          · ${WorkBuddy.fmtUSD(w.price)}
+          · ★ ${w.rating!=null?w.rating.toFixed(1):'-'}
+          · 加入于 ${WorkBuddy.fmtDate(w.addedAt.slice(0,10))}
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-sm" data-wl-open="${w.url}">查看</button>
+        <button class="btn btn-sm btn-danger" data-wl-remove="${w.id}">移除</button>
+      </div>
+    </div>
+  `).join('');
+
+  const summary = `
+    <div style="background:var(--accent-soft);border-radius:8px;padding:12px 16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-weight:600;color:var(--accent)">📋 共 ${WATCHLIST.length} 个商品</div>
+        <div class="text-xs text-muted" style="margin-top:2px">
+          平均价 $${(WATCHLIST.reduce((s,w)=>s+(w.price||0),0)/WATCHLIST.length).toFixed(2)}
+          · 平均评分 ★ ${(WATCHLIST.reduce((s,w)=>s+(w.rating||0),0)/WATCHLIST.length).toFixed(2)}
+        </div>
+      </div>
+    </div>
+  `;
+
+  WorkBuddy.openDrawer({
+    title: '📋 我的意向清单',
+    body: summary + items,
+    actions: [
+      { label: '导出 CSV', onClick: exportWatchlistCSV },
+      { label: '一键清空', onClick: () => {
+        if(confirm('确定清空意向清单？')){
+          WATCHLIST = [];
+          saveWatchlist();
+          updateWatchlistBadge();
+          WorkBuddy.closeDrawer();
+          renderAll();
+          WorkBuddy.toast('已清空', 'info');
+        }
+      } },
+      { label: '关闭', primary: true, onClick: () => WorkBuddy.closeDrawer() }
+    ]
+  });
+  // 抽屉里事件委托
+  setTimeout(() => {
+    document.querySelectorAll('[data-wl-remove]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        removeFromWatchlist(btn.dataset.wlRemove);
+        WorkBuddy.toast('已移除', 'info');
+        WorkBuddy.closeDrawer();
+        openWatchlistDrawer();  // 重新打开刷新
+        renderAll();
+      });
+    });
+    document.querySelectorAll('[data-wl-open]').forEach(btn => {
+      btn.addEventListener('click', () => window.open(btn.dataset.wlOpen, '_blank'));
+    });
+  }, 50);
+}
+function exportWatchlistCSV(){
+  if(WATCHLIST.length === 0){ WorkBuddy.toast('意向清单为空','info'); return; }
+  const headers = ['id','asin','title','brand','source','price','oldPrice','rating','reviews','bsr','launchDate','url','addedAt'];
+  const escape = v => {
+    if(v == null) return '';
+    const s = String(v);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+  };
+  const rows = WATCHLIST.map(w => headers.map(h => escape(w[h])).join(','));
+  // 加 BOM 头,Excel 中文不乱码
+  const csv = '\uFEFF' + headers.join(',') + '\n' + rows.join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `意向清单-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  WorkBuddy.toast(`已导出 ${WATCHLIST.length} 条`, 'success');
+}
+
+// 表格里的"加入意向清单"按钮
+document.addEventListener('click', e => {
+  const btn = e.target.closest('[data-watch]');
+  if(!btn) return;
+  e.stopPropagation();
+  const id = btn.dataset.watch;
+  const p = STATE.products.find(x => x.id === id);
+  if(!p) return;
+  toggleWatchlist(p);
+  WorkBuddy.toast(
+    isInWatchlist(id) ? `✅ 已加入意向清单: ${p.title.slice(0,20)}` : `↩️ 已从意向清单移除`,
+    isInWatchlist(id) ? 'success' : 'info'
+  );
+  renderAll();
+});
+
+// 顶部"我的意向清单"按钮
+document.addEventListener('DOMContentLoaded', () => {
+  updateWatchlistBadge();
+  const btn = document.getElementById('btn-open-watchlist');
+  if(btn) btn.addEventListener('click', openWatchlistDrawer);
+});
+</script>
+</body>
+</html>
